@@ -3,10 +3,19 @@ package main
 class Parser {
 
     private val states = ArrayList<Pair<State, String>>()
-    private val transitions = HashMap<State, HashMap<String, ArrayList<State>>>()
+    private val transitions = LinkedHashMap<State, LinkedHashMap<String, ArrayList<State>>>()
+
+    var debug = false
+
+    /*TODO
+    Change formatting to something more reasonable
+    "state_name"s: [a:"state_name_2"], "state_name_2"e: []
+     */
 
     @Throws(NFAParseException::class)
     fun parse(input: String): FSA {
+        states.clear()
+        transitions.clear()
         val blocks = input.split(',')
         blocks.forEach { states.add(Pair(extractState(it), it)) }
         println("Found states ${states.map { it.first }}")
@@ -24,6 +33,7 @@ class Parser {
 
     @Throws(NFAParseException::class)
     private fun extractState(state: String): State {
+        //TODO Rewrite with new format
         try {
             var sIndex = state.indexOf('{') + 1
             var eIndex = state.indexOf('}')
@@ -45,12 +55,13 @@ class Parser {
         var isName = false //Currently reading name
 
         val trsString = with(state.second) { substring(indexOf('[') + 1, indexOf(']')) }
+
         trsString.forEach { if (it != '{') { //Ignore opening brace
                 if (it == '}') { //At the end of either a transition key or a name
                     if (isName) {
                         val trsState = findState(name.toString()) // Find the State for the key
                         // Set up key to State list map if it doesn't exist
-                        if (!transitions.containsKey(state.first)) transitions[state.first] = HashMap()
+                        if (!transitions.containsKey(state.first)) transitions[state.first] = LinkedHashMap()
                         val transitionKey = trs.toString()
                         if (transitions[state.first]?.containsKey(transitionKey) != true) {
                             transitions[state.first]?.set(transitionKey, ArrayList())
@@ -66,15 +77,16 @@ class Parser {
                 } else if (isName) name.append(it) else trs.append(it)
             }
         }
-        transitions.forEach { t, u ->
-            println("Transition(s) from ${t.name}: $u ")
+        if (debug) {
+            transitions.forEach { t, u ->
+                println("Transition(s) from ${t.name}: $u ")
+            }
         }
     }
 
     private fun findState(name: String): State {
         return states.find { it.first.name == name }?.first ?: throw NFAParseException("State $name named in transition not found")
     }
-
 
     class NFAParseException(message: String) : Exception(message)
 
