@@ -31,7 +31,8 @@ class Runner(FSA: FSA) {
                     if(printTransitions) println("Transitioning with $str from ${rs.state} to $it")
                     updateRunningState(rs, it)
                 } ?: listOf())
-                if (trs?.isEmpty() == true) println("No transitions for ${rs.state} with $str")
+
+                if (trs?.isEmpty() == true) System.err.println("No transitions from ${rs.state} with $str")
             }
 
             println("\nTransition pass complete. New states are $newStates\n")

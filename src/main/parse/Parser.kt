@@ -1,6 +1,9 @@
-package main
+package main.parse
 
-class Parser {
+import main.FSA
+import main.State
+
+class Parser : FSAParser {
 
     private val states = ArrayList<Pair<State, String>>()
     private val transitions = LinkedHashMap<State, LinkedHashMap<String, ArrayList<State>>>()
@@ -13,7 +16,7 @@ class Parser {
      */
 
     @Throws(NFAParseException::class)
-    fun parse(input: String): FSA {
+    override fun parse(input: String): FSA {
         states.clear()
         transitions.clear()
         val blocks = input.split(',')

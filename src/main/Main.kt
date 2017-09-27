@@ -1,5 +1,6 @@
 package main
 
+import main.parse.JsonParser
 import java.io.File
 
 
@@ -14,7 +15,7 @@ class Main {
     companion object {
 
         @JvmStatic fun main(args: Array<String>) {
-            val parser = Parser()
+            val parser = JsonParser()
             if (args.isNotEmpty()) {
                 val fsaString = File(args.first()).readText()
                 parser.parse(fsaString)
@@ -33,14 +34,93 @@ class Main {
                     "{state_4} [{0}{state_5}{1}{state_5}], " +
                     "{state_5}{e} []"
 
+            val fifthcharJson =  """{
+                    "states": [
+                        {
+                            "name": "state_0",
+                            "start": true,
+                            "transitions": [
+                                {
+                                    "key": "0",
+                                    "state": "state_0"
+                                },
+                                {
+                                    "key": "1",
+                                    "state": "state_0"
+                                },
+                                {
+                                    "key": "1",
+                                    "state": "state_1"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "state_1",
+                            "transitions": [
+                                {
+                                    "key": "1",
+                                    "state": "state_2"
+                                },
+                                {
+                                    "key": "0",
+                                    "state": "state_2"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "state_2",
+                            "transitions": [
+                                {
+                                    "key": "1",
+                                    "state": "state_3"
+                                },
+                                {
+                                    "key": "0",
+                                    "state": "state_3"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "state_3",
+                            "transitions": [
+                                {
+                                    "key": "1",
+                                    "state": "state_4"
+                                },
+                                {
+                                    "key": "0",
+                                    "state": "state_4"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "state_4",
+                            "transitions": [
+                                {
+                                    "key": "1",
+                                    "state": "state_5"
+                                },
+                                {
+                                    "key": "0",
+                                    "state": "state_5"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "state_5",
+                            "end": true,
+                            "transitions": []
+                        }
+                    ]
+                }"""
 
-            parser.debug = false
-            val fda = parser.parse(fifthchar)
-            println("FSA is $fda")
+            //parser.debug = false
+            val fsa = parser.parse(fifthcharJson)
+            println("FSA is $fsa")
             println("\n\n\n")
-            val runner  = Runner(fda)
-            runner.saveStateHistory = true
-            runner.run(arrayOf("0", "1", "1", "1", "1"))
+            val runner  = Runner(fsa)
+            runner.saveStateHistory = false
+            runner.run(arrayOf("0", "1", "1", "1", "1", "1"))
             runner.states.forEach {
                 if (it is Runner.RunningState.HistoryRunningState) {
                     println("History for state ${it.state} is ${it.previous}")
