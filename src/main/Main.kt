@@ -119,6 +119,7 @@ class Main {
             println("FSA is $fsa")
             println("\n\n\n")
             val runner  = Runner(fsa)
+            runner.debug = true
             runner.saveStateHistory = false
             runner.run(arrayOf("0", "1", "1", "1", "1", "1"))
             runner.states.forEach {

@@ -1,9 +1,11 @@
 package main
 
+import java.awt.Color
 import java.util.*
 
 class Runner(FSA: FSA) {
 
+    private val inputSymbols = FSA.inputSymbols
     private val startStates = FSA.startStates
     private val endStates = FSA.endStates
     private val transitions = FSA.transitions
@@ -11,6 +13,7 @@ class Runner(FSA: FSA) {
     var states = ArrayList<RunningState>()
         private set
 
+    private val logger = Logger()
 
     var debug = false
     var printTransitions = true //TODO Log levels
@@ -18,35 +21,37 @@ class Runner(FSA: FSA) {
 
     fun run(input: Array<String>) {
         states.clear()
-        states.addAll(startStates.map { createRunningState(it) }) //Wrap with RunningStates for logging
+        //Wrap with RunningStates for logging
+        //HistoryRunningState keeps track of the path to the state
+        states.addAll(startStates.map { createRunningState(it) })
 
-        if(debug) println("Transitions $transitions")
+        if (debug) logger.printTransitions(transitions)
 
-        input.forEach { str -> //Single pass through input string (string of strings)
-            val newStates = ArrayList<RunningState>() //New set of states generated in pass
-            //TODO Overwrite states as the pass is going on
-            states.forEach { rs ->
-                val trs = transitions[rs.state]?.get(str) //Collection of states we can move to
-                newStates.addAll(trs?.map {
-                    if(printTransitions) println("Transitioning with $str from ${rs.state} to $it")
-                    updateRunningState(rs, it)
-                } ?: listOf())
-
-                if (trs?.isEmpty() == true) System.err.println("No transitions from ${rs.state} with $str")
+        input.forEach { str ->
+            //Single pass through input string (string of strings)
+            if (str !in inputSymbols) {
+                throw IllegalArgumentException("Input $str not in input set $inputSymbols")
             }
 
-            println("\nTransition pass complete. New states are $newStates\n")
+            // TODO: Replace each state in place
+            val newStates = ArrayList<RunningState>() // New set of states generated in pass
+            states.forEach { rs ->
+                val trs = transitions[rs.state]?.get(str) //Collection of states we can move to
+                if (trs != null) {
+                    newStates.addAll(trs.map { updateRunningState(rs, it) })
+                    logger.printTransition(rs.state, str, trs)
+                }
+            }
+
             states = newStates
-            val endStates = checkEndStates()
-            if (endStates.isNotEmpty()) {
-                println("Reached end state(s): $endStates)")
+            logger.printNewStates(newStates.map { it.state })
+
+            val finalStates = states.map { it.state }.union(endStates)
+            if (finalStates.isNotEmpty()) {
+                logger.printFinalStates(finalStates)
             }
         }
         println("Reached input end: $states")
-    }
-
-    private fun checkEndStates(): Collection<State> {
-        return states.map { it.state }.filter { endStates.contains(it) }
     }
 
     private fun createRunningState(state: State): RunningState {
@@ -55,11 +60,10 @@ class Runner(FSA: FSA) {
 
     //TODO Find a better way of doing this
     private fun updateRunningState(runningState: RunningState, state: State): RunningState {
-        if (runningState is RunningState.HistoryRunningState) {
-            return RunningState.HistoryRunningState(state, runningState.previous)
-
+        return if (runningState is RunningState.HistoryRunningState) {
+            RunningState.HistoryRunningState(state, runningState.previous)
         } else {
-            return RunningState.SingleRunningState(state)
+            RunningState.SingleRunningState(state)
         }
     }
 
@@ -67,7 +71,7 @@ class Runner(FSA: FSA) {
 
         abstract var state: State
 
-        class SingleRunningState(startState: State): RunningState() {
+        class SingleRunningState(startState: State) : RunningState() {
             override var state: State = startState
 
             override fun toString(): String {
@@ -75,10 +79,11 @@ class Runner(FSA: FSA) {
             }
         }
 
-        class HistoryRunningState(startState: State, val previous: MutableList<State> = arrayListOf()): RunningState() {
+        class HistoryRunningState(startState: State, val previous: MutableList<State> = arrayListOf()) : RunningState() {
             init {
                 previous.add(startState)
             }
+
             override var state: State = startState
                 set(value) {
                     previous.add(value)
@@ -88,6 +93,48 @@ class Runner(FSA: FSA) {
             override fun toString(): String {
                 return "HRS(state$state, history=$previous)"
             }
+        }
+
+    }
+
+    private class Logger {
+
+        private val ESCAPE = '\u001B'
+        private val RESET = "$ESCAPE[0m"
+
+        var printTransitions = true //TODO Log levels
+
+        fun printTransitions(transitions: Map<State, Map<String, Collection<State>>>) {
+            print("Transitions:\n", 92)
+            transitions.forEach { state, map ->
+                // For each state
+                print("${state.name} -> \n " + // Transition from it to
+                        map.map { entry ->
+                            // For each input symbol to list of states
+                            entry.key + ": " + entry.value.map { it.name }.toString() + "\n"
+                        }.toString()
+                                .removePrefix("[") // Remove braces on state list
+                                .removeSuffix("]")
+                                .replace(", ", " "), // Remove comma separation
+                 92)
+            }
+        }
+
+        fun printTransition(current: State, symbol: String, transitions: Collection<State>) {
+            if (!printTransitions) return
+            println("Transitioning from ${current.name} with $symbol to: ${transitions.map { it.name }}")
+        }
+
+        fun printNewStates(newStates: Collection<State>) {
+            print("Transition complete. New states ${newStates.map { it.name }}\n", 32)
+        }
+
+        fun printFinalStates(finalStates: Collection<State>) {
+            print("Reached final states: ${finalStates.map { it.name }}\n\n", 32)
+        }
+
+        private fun print(out: String, foreground: Int) {
+            println("$ESCAPE[${foreground}m$out$RESET")
         }
 
     }
