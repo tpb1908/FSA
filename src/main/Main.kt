@@ -25,7 +25,7 @@ class Main {
                         "start": true,
                         "transitions": [
                             {
-                                "key": "5p",
+                                "keys": ["5p", "five"],
                                 "state": "5"
                             },
                             {

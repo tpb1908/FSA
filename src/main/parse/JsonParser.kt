@@ -14,7 +14,6 @@ class JsonParser : FSAParser {
 
     override fun parse(input: String): FSA {
 
-        //TODO Support multiple keys for the same state
 
         val stateJsonObjects = Json.parse(input).asObject().get("states").asArray()
         //Map each state we find to a list of its transitions
@@ -28,33 +27,35 @@ class JsonParser : FSAParser {
             val state = State(name, start, end)
             states.add(state)
             //Get the JSONArray and map each value to a JSON object
-            transitionJson.put(state, it.get("transitions").asArray().map { it.asObject() })
+            transitionJson[state] = it.get("transitions").asArray().map { it.asObject() }
         }
+
+
         //Building the transition table for each state
         transitionJson.forEach { state, trsList ->
-            trsList.forEach {
-                val key = it.getString("key", "unknown_key")
-                //State to move to
-                val endStateName = it.getString("state", "unknown_name")
-                if (endStateName == "unknown_name") { //Multiple states for this key
-                    val stateArray = it.get("states").asArray()
-                    stateArray.forEach {
-                        //Find the State matching the name given in the transition
-                        val endState = states.find { it.name == endStateName }
-                        if (endState != null) {
-                            addTransition(state, key, endState)
-                        } else {
-                            System.err.println("Cant't find state $endStateName for transition")
-                        }
-                    }
-                } else {
+            trsList.forEach { transition ->
+
+                // We either have a single key, or a list of keys to move to a state or list of states
+                var keys = listOf(transition.getString("key", "unknown_key"))
+                if (keys[0] == "unknown_key") {
+                    keys = transition.get("keys").asArray().map { it.asString() }
+                }
+
+                //State or states to move to
+                var endStateNames = listOf(transition.getString("state", "unknown_name"))
+                if (endStateNames[0] == "unknown_name") {
+                    endStateNames = transition.get("states").asArray().map { it.asString() }
+                }
+
+                // For each of the end states and each of the keys, add the transition
+                endStateNames.forEach { endStateName ->
+                    //Find the State matching the name given in the transition
                     val endState = states.find { it.name == endStateName }
                     if (endState != null) {
-                        addTransition(state, key, endState)
+                        keys.forEach { key -> addTransition(state, key, endState) }
                     } else {
-                        System.err.println("Cant't find state $endStateName for transition")
+                        System.err.println("Cant't find state $endStateName for transition with key $keys")
                     }
-
                 }
             }
         }
